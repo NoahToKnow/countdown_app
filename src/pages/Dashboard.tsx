@@ -1,111 +1,112 @@
-import { useEffect, useMemo, useState } from "react";
-import type { CountdownEvent } from "../types";
-import {
-  getEvents,
-  createEvent,
-  updateEvent,
-  deleteEvent,
-} from "../utils/storage";
-import CountdownCard from "../components/CountdownCard";
-import CountdownForm from "../components/CountdownForm";
+import { useEffect, useRef } from "react";
 
 export default function Dashboard() {
-  const [events, setEvents] = useState<CountdownEvent[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<CountdownEvent | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    setEvents(getEvents());
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const stars = Array.from({ length: 120 }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      radius: Math.random() * 1.4 + 0.4,
+      speed: Math.random() * 0.4 + 0.15,
+      alpha: Math.random() * 0.6 + 0.35,
+    }));
+
+    let animationId = 0;
+
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    const render = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#fff";
+      stars.forEach((star) => {
+        star.y -= star.speed;
+        if (star.y < 0) {
+          star.y = canvas.height;
+          star.x = Math.random() * canvas.width;
+        }
+        ctx.globalAlpha = star.alpha;
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      animationId = requestAnimationFrame(render);
+    };
+
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+    animationId = requestAnimationFrame(render);
+
+    return () => {
+      cancelAnimationFrame(animationId);
+      window.removeEventListener("resize", resizeCanvas);
+    };
   }, []);
 
-  const sorted = useMemo(
-    () => [...events].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
-    [events],
-  );
-
-  function openCreate() {
-    setEditing(null);
-    setShowForm(true);
-  }
-
-  function openEdit(ev: CountdownEvent) {
-    setEditing(ev);
-    setShowForm(true);
-  }
-
-  function handleDelete(ev: CountdownEvent) {
-    if (!confirm(`Delete "${ev.title}"?`)) return;
-    deleteEvent(ev.id);
-    setEvents(getEvents());
-  }
-
-  function handleSubmit(data: {
-    title: string;
-    description: string;
-    targetDate: string;
-  }) {
-    if (editing) {
-      updateEvent(editing.id, data);
-    } else {
-      createEvent(data);
-    }
-    setEvents(getEvents());
-    setShowForm(false);
-    setEditing(null);
-  }
-
   return (
-    <div className="dashboard">
-      <header className="dashboard__header">
-        <div>
-          <h1 className="dashboard__title">Countdown Widgets</h1>
-          <p className="muted">
-            Personal countdowns stored in your browser. Embed them anywhere on
-            this device.
+    <>
+      <canvas id="starfield" ref={canvasRef} />
+      <div className="page">
+        <div className="topbar">
+          <div>Starting Soon</div>
+          <div className="socials">
+            <a href="#">f</a>
+            <a href="#">t</a>
+            <a href="#">yt</a>
+            <a href="#">ig</a>
+          </div>
+        </div>
+
+        <main className="hero">
+          <p className="eyebrow">Starting Soon</p>
+          <h1 className="title">Journey Begins In</h1>
+
+          <div className="countdown">
+            <div className="unit">
+              <div className="value" id="days">
+                02
+              </div>
+              <div className="label">Days</div>
+            </div>
+            <div className="unit">
+              <div className="value" id="hours">
+                11
+              </div>
+              <div className="label">Hours</div>
+            </div>
+            <div className="unit">
+              <div className="value" id="minutes">
+                56
+              </div>
+              <div className="label">Minutes</div>
+            </div>
+            <div className="unit">
+              <div className="value" id="seconds">
+                06
+              </div>
+              <div className="label">Seconds</div>
+            </div>
+          </div>
+
+          <p className="subtext">
+            Hold tight as we prepare for launching the most outlandish new
+            product ever.
           </p>
-        </div>
-        <button type="button" className="btn btn--primary" onClick={openCreate}>
-          + New countdown
-        </button>
-      </header>
+        </main>
 
-      {showForm && (
-        <div className="dashboard__form">
-          <CountdownForm
-            initial={editing}
-            onSubmit={handleSubmit}
-            onCancel={() => {
-              setShowForm(false);
-              setEditing(null);
-            }}
-          />
-        </div>
-      )}
-
-      {sorted.length === 0 ? (
-        <div className="empty">
-          <h2>No countdowns yet</h2>
-          <p className="muted">Create your first countdown to get started.</p>
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={openCreate}
-          >
-            Create countdown
-          </button>
-        </div>
-      ) : (
-        <div className="grid">
-          {sorted.map((ev) => (
-            <CountdownCard
-              key={ev.id}
-              event={ev}
-              onEdit={() => openEdit(ev)}
-              onDelete={() => handleDelete(ev)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+        <div className="footer-note">© Your Company Name</div>
+        <div className="mountains"></div>
+      </div>
+    </>
   );
 }
